@@ -14,7 +14,7 @@ namespace MadsKristensen.VoiceExtension
 
         public CommandTable(DTE2 dte)
         {
-            _dte = dte;
+            _dte = dte; 
             BuildCommandTable();
         }
 
@@ -22,7 +22,13 @@ namespace MadsKristensen.VoiceExtension
 
         private void BuildCommandTable()
         {
-            Commands = new Dictionary<string, string> { { "yes", null }, { "no", null }, { "what can I say", null } };
+            Commands = new Dictionary<string, string> { 
+                { "yes", null }, 
+                { "no", null },
+                { "what can I say", null },
+                { "keep listening", null },
+                { "stop listening", null }
+            };
 
             string folder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             string file = Path.Combine(folder, "resources", "commands.txt");

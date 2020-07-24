@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Speech.Recognition;
@@ -24,6 +25,8 @@ namespace MadsKristensen.VoiceExtension
         private SpeechRecognitionEngine _rec;
         private bool _isEnabled, _isListening;
         private string _rejected;
+        private bool _longListening;
+        private readonly static TimeSpan InitialSilenceDefault = TimeSpan.FromSeconds(5);
 
         protected override void Initialize()
         {
@@ -47,11 +50,11 @@ namespace MadsKristensen.VoiceExtension
             try
             {
                 var c = new Choices(_cache.Commands.Keys.ToArray());
-                var gb = new GrammarBuilder(c);
+                var gb = new GrammarBuilder(c) { Culture = CultureInfo.InstalledUICulture };
                 var g = new Grammar(gb);
 
                 _rec = new SpeechRecognitionEngine();
-                _rec.InitialSilenceTimeout = TimeSpan.FromSeconds(3);
+                _rec.InitialSilenceTimeout = InitialSilenceDefault;
                 _rec.SpeechHypothesized += OnSpeechHypothesized;
                 _rec.SpeechRecognitionRejected += OnSpeechRecognitionRejected;
                 _rec.RecognizeCompleted += OnSpeechRecognized;
@@ -75,7 +78,19 @@ namespace MadsKristensen.VoiceExtension
                 {
                     SetupVoiceRecognition();
                 }
-                else if (!_isListening)
+                listen();
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(ex);
+            }
+        }
+
+        private void listen()
+        {
+            try
+            {
+                if (!_isListening || _longListening)
                 {
                     _isListening = true;
                     _rec.RecognizeAsync();
@@ -125,10 +140,24 @@ namespace MadsKristensen.VoiceExtension
                     _dte.StatusBar.Clear();
                     Telemetry.TrackEvent("Show command list");
                 }
+                else if (e.Result != null && e.Result.Text == "keep listening")
+                {// start long listening
+                    _longListening = true;
+                    _rec.InitialSilenceTimeout = TimeSpan.Zero;
+                    _dte.StatusBar.Text = "I am listening... (keep)";
+                    Telemetry.TrackEvent("keep listening");
+                }
+                else if (e.Result != null && e.Result.Text == "stop listening")
+                {// stop long listening
+                    _longListening = false;
+                    _rec.InitialSilenceTimeout = InitialSilenceDefault;
+                    _dte.StatusBar.Clear();
+                    Telemetry.TrackEvent("stop listening");
+                }
                 else if (e.Result != null && e.Result.Confidence > _minConfidence)
                 { // Speech matches a command
                     _cache.ExecuteCommand(e.Result.Text);
-                    var props = new Dictionary<string, string> { { "phrase" , e.Result.Text } };
+                    var props = new Dictionary<string, string> { { "phrase", e.Result.Text } };
                     Telemetry.TrackEvent("Match", props);
                 }
                 else if (string.IsNullOrEmpty(_rejected))
@@ -144,6 +173,11 @@ namespace MadsKristensen.VoiceExtension
                 else
                 { // No match or timeout
                     _dte.StatusBar.Clear();
+                }
+
+                if (_longListening)
+                {
+                    listen();
                 }
             }
             catch (Exception ex)

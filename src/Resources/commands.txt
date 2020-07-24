@@ -2,7 +2,6 @@
 # List of available commands
 # Add commands from your own extensions here as
 #################################################
-
 Next Error|View.NextError
 Previous Error|View.PreviousError
 Next Task|View.NextTask

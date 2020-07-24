@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.VisualStudio.PlatformUI;
 using Microsoft.VisualStudio.Shell.Interop;
 
 public static class Logger
@@ -48,7 +49,8 @@ public static class Logger
         if (pane == null)
         {
             Guid guid = Guid.NewGuid();
-            var output = (IVsOutputWindow)_provider.GetService(typeof(SVsOutputWindow));
+            var output = (IVsOutputWindow)_provider?.GetService(typeof(SVsOutputWindow));
+            if (output == null) return false;
             output.CreatePane(ref guid, _name, 1, 1);
             output.GetPane(ref guid, out pane);
         }
